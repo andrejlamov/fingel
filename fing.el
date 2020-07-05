@@ -16,14 +16,14 @@
 (defvar fingel-nr-of-words 60)
 (defvar fingel-word-length 10)
 
-(setq fingel-exercises
-      (list
-       :ex1 "!@#$%^"
-       :ex2 "&*()_+|~`\\'\"][{}.,<>:;"
-       :ex1-and-ex2 '(:ex1 :ex2)
-       :left-43 "1!qQaAzZ2@wWsSxX"
-       :right-43 "9(oOlL.>/?;:pP0)-_[{'\"=+]}"
-       :43 '(:left-43 :right-43)))
+(defvar fingel-exercises
+  (list
+   :ex1 "!@#$%^"
+   :ex2 "&*()_+|~`\\'\"][{}.,<>:;"
+   :ex1-and-ex2 '(:ex1 :ex2)
+   :left-43 "1!qQaAzZ2@wWsSxX"
+   :right-43 "9(oOlL.>/?;:pP0)-_[{'\"=+]}"
+   :43 '(:left-43 :right-43)))
 
 (defun fingel-split-on-chars (str)
   (->>  str
