@@ -13,17 +13,24 @@
 (defvar fingel-correct-face '(:background "light green"))
 (defvar fingel-wrong-face '(:background "pink"))
 
-(defvar fingel-nr-of-words 60)
+(defvar fingel-nr-of-words 40)
 (defvar fingel-word-length 10)
 
 (defvar fingel-exercises
   (list
-   :ex1 "!@#$%^"
-   :ex2 "&*()_+|~`\\'\"][{}.,<>:;"
-   :ex1-and-ex2 '(:ex1 :ex2)
-   :left-43 "1!qQaAzZ2@wWsSxX"
-   :right-43 "9(oOlL.>/?;:pP0)-_[{'\"=+]}"
-   :43 '(:left-43 :right-43)))
+   :left-hard "!@#$%^"
+   :right-hard "&*()_+|~`\\'\"][{}.,<>:;"
+   :left-right-hard '(:left-hard :right-hard)
+
+   :left-1 "$4rRfFvV5%tTgGbB"
+   :left-2 "2@wWsSxX"
+   :left-3 "3#eEdDcC"
+   :left-4 "1!qQaAzZ"
+   :left-42 '(:left-4 :left-2)
+   :left-13 '(:left-1 :left-3)
+   :left-12 '(:left-1 :left-2)
+   :left-23 '(:left-2 :left-3)
+   :left-34 '(:left-3 :left-4)))
 
 (defun fingel-split-on-chars (str)
   (->>  str
