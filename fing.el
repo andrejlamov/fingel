@@ -16,21 +16,27 @@
 (defvar fingel-nr-of-words 40)
 (defvar fingel-word-length 10)
 
-(defvar fingel-exercises
-  '(
-    :left-hard "!@#$%^"
-    :right-hard "&*()_+|~`\\'\"][{}.,<>:;"
-    :left-right-hard (:left-hard :right-hard)
+(defvar fingel-exercises)
 
-    :left-1 "$4rRfFvV5%tTgGbB"
-    :left-2 "2@wWsSxX"
-    :left-3 "3#eEdDcC"
-    :left-4 "1!qQaAzZ"
-    :left-42 (:left-4 :left-2)
-    :left-13 (:left-1 :left-3)
-    :left-12 (:left-1 :left-2)
-    :left-23 (:left-2 :left-3)
-    :left-34 (:left-3 :left-4)))
+(setq fingel-exercises
+      '(
+        :left-hard "!@#$%^"
+        :right-hard "&*()_+|~`\\'\"][{}.,<>:;"
+        :left-right-hard (:domains (:left-hard :right-hard) :combine "alternate")
+
+        :left-1 "$4rRfFvV5%tTgGbB"
+        :left-2 "2@wWsSxX"
+        :left-3 "3#eEdDcC"
+        :left-4 "1!qQaAzZ"
+        :left-42 (:domains (:left-4 :left-2) :combine "concat")
+        :left-13 (:domains (:left-1 :left-3) :combine "concat")
+        :left-12 (:domains (:left-1 :left-2) :combine "concat")
+        :left-23 (:domains (:left-2 :left-3) :combine "concat")
+        :left-34 (:domains (:left-3 :left-4) :combine "concat")
+
+        :right-1 "67^&yuYUhjHJnmNM"
+
+        :right-1-left-2 (:domains (:left-2 :right-1) :combine "alternate")))
 
 (defun fingel-split-on-chars (str)
   (->>  str
@@ -44,6 +50,12 @@
    (-zip (fingel-split-on-chars a)
          (fingel-split-on-chars b))))
 
+(defun fingel-steps (step count)
+  (->> (-repeat count step)
+       (-reductions-r-from (lambda (acc v) (+ acc v)) 0)
+       (cdr)
+       (reverse)))
+
 (defun fingel-diff-to-regions (diff)
   (-partition-by (-lambda ((_idx is-eq)) is-eq) diff))
 
@@ -51,12 +63,18 @@
   (with-current-buffer buffer
     (buffer-string)))
 
-(defun fingel-create-exercise (domain-string word-length nr-of-words)
-  (let ((limit (length domain-string))
-        (domain (fingel-split-on-chars domain-string)))
+(defun fingel-generate-text (domain-strings &optional word-length nr-of-words)
+  (let* ((word-length fingel-word-length)
+         (nr-of-words fingel-nr-of-words)
+         (domains (-map 'fingel-split-on-chars domain-strings))
+         (domain-idxs (->> (fingel-steps 1 (length domains))
+                           (-repeat word-length)
+                           (-flatten))))
     (->> (-repeat nr-of-words (-repeat word-length ""))
          (-map (lambda (word)
-                 (-map (lambda (c) (nth (random limit) domain)) word)))
+                 (-map (lambda (i) (let ((domain (nth i domains)))
+                                     (nth (random (length domain)) domain)))
+                       domain-idxs)))
          (-map (-partial 's-join ""))
          (s-join "\n"))))
 
@@ -65,13 +83,15 @@
        (-partition-all 2)
        (-map 'car)))
 
-(defun fingel-get-text (pl k)
+(defun fingel-exercise-text (pl k)
   (let ((v (plist-get pl k)))
     (cond
-     ((listp v) (->> v
-                     (-map (-partial 'plist-get pl))
-                     (s-join "")))
-     ((stringp v) v))))
+     ((listp v) (let ((domains (->> (plist-get v :domains)
+                                    (-map (-partial 'plist-get pl)))))
+                  (pcase (plist-get v :combine)
+                    ("concat" (fingel-generate-text (list (funcall (-partial 's-join "") domains))))
+                    ("alternate" (fingel-generate-text domains)))))
+     ((stringp v) (fingel-generate-text v)))))
 
 (defun fingel-remove-overlays ()
   (interactive)
@@ -113,11 +133,7 @@
                             (fingel-plist-keys)
                             (completing-read "fingel: ")
                             (read)))
-         (domain (fingel-get-text fingel-exercises exercise-key))
-         (exercise-text (fingel-create-exercise
-                         domain
-                         fingel-word-length
-                         fingel-nr-of-words))
+         (exercise-text (fingel-exercise-text fingel-exercises exercise-key))
          (in-buffer (get-buffer-create fingel-input-buffer))
          (exer-buffer (get-buffer-create fingel-exercise-buffer)))
 
