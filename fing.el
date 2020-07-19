@@ -131,7 +131,10 @@
 
 (setq fing-exercises
       (list
-       :left-right-24 (fing-gen-!consecutive fing-left-2 fing-left-4 fing-right-2 fing-right-4)))
+       :left-12-right-34 (fing-gen-!consecutive (fing-gen-!consecutive fing-left-1 fing-left-2)
+                                                (fing-gen-!consecutive fing-right-3 fing-right-4))
+       :left-right-34 (fing-gen-!consecutive fing-left-3 fing-left-4 fing-right-3 fing-right-4)
+       :left-right-12 (fing-gen-!consecutive fing-left-1 fing-left-2 fing-right-1 fing-right-2)))
 
 (defun fingel ()
   (interactive)
