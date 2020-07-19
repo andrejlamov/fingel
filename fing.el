@@ -6,136 +6,143 @@
 
 (require 's)
 (require 'dash)
+(require 'cl)
 
-(defvar fingel-input-buffer "*fingel-input*")
-(defvar fingel-exercise-buffer "*fingel-exercise*")
+(defvar fing-input-buffer "*fing-input*")
+(defvar fing-exercise-buffer "*fing-exercise*")
+(defvar fing-correct-face '(:background "light green"))
+(defvar fing-wrong-face '(:background "pink"))
 
-(defvar fingel-correct-face '(:background "light green"))
-(defvar fingel-wrong-face '(:background "pink"))
+(defun fing-random-char (c)
+  (let ((i (random (length c))))
+    (substring c i (+ i 1))))
 
-(defvar fingel-nr-of-words 40)
-(defvar fingel-word-length 10)
+(defun fing-random-element (c)
+  (let ((i (random (length c))))
+    (nth i c)))
 
-(defvar fingel-exercises)
-
-(setq fingel-exercises
-      '(
-        :left-hard "!@#$%^"
-        :right-hard "&*()_+|~`\\'\"][{}.,<>:;"
-        :left-right-hard (:domains (:left-hard :right-hard) :combine "alternate")
-
-        :left-1 "$4rRfFvV5%tTgGbB"
-        :left-2 "2@wWsSxX"
-        :left-3 "3#eEdDcC"
-        :left-4 "1!qQaAzZ"
-        :left-42 (:domains (:left-4 :left-2) :combine "concat")
-        :left-13 (:domains (:left-1 :left-3) :combine "concat")
-        :left-12 (:domains (:left-1 :left-2) :combine "concat")
-        :left-23 (:domains (:left-2 :left-3) :combine "concat")
-        :left-34 (:domains (:left-3 :left-4) :combine "concat")
-
-        :right-1 "67^&yuYUhjHJnmNM"
-
-        :right-1-left-2 (:domains (:left-2 :right-1) :combine "alternate")))
-
-(defun fingel-split-on-chars (str)
-  (->>  str
-        (s-split "")
-        (cdr)
-        (-butlast)))
-
-(defun fingel-diff (a b)
-  (-map-indexed
-   (-lambda (idx (a . b)) (list idx (s-equals? a b)))
-   (-zip (fingel-split-on-chars a)
-         (fingel-split-on-chars b))))
-
-(defun fingel-steps (step count)
+(defun fing-steps (step count)
   (->> (-repeat count step)
        (-reductions-r-from (lambda (acc v) (+ acc v)) 0)
        (cdr)
        (reverse)))
 
-(defun fingel-diff-to-regions (diff)
-  (-partition-by (-lambda ((_idx is-eq)) is-eq) diff))
-
-(defun fingel-content (buffer)
-  (with-current-buffer buffer
-    (buffer-string)))
-
-(defun fingel-generate-text (domain-strings &optional word-length nr-of-words)
-  (let* ((word-length fingel-word-length)
-         (nr-of-words fingel-nr-of-words)
-         (domains (-map 'fingel-split-on-chars domain-strings))
-         (domain-idxs (->> (fingel-steps 1 (length domains))
-                           (-repeat word-length)
-                           (-flatten))))
-    (->> (-repeat nr-of-words (-repeat word-length ""))
-         (-map (lambda (word)
-                 (-map (lambda (i) (let ((domain (nth i domains)))
-                                     (nth (random (length domain)) domain)))
-                       domain-idxs)))
-         (-map (-partial 's-join ""))
-         (s-join "\n"))))
-
-(defun fingel-plist-keys (pl)
+(defun fing-plist-keys (pl)
   (->> pl
        (-partition-all 2)
        (-map 'car)))
 
-(defun fingel-exercise-text (pl k)
-  (let ((v (plist-get pl k)))
-    (cond
-     ((listp v) (let ((domains (->> (plist-get v :domains)
-                                    (-map (-partial 'plist-get pl)))))
-                  (pcase (plist-get v :combine)
-                    ("concat" (fingel-generate-text (list (funcall (-partial 's-join "") domains))))
-                    ("alternate" (fingel-generate-text domains)))))
-     ((stringp v) (fingel-generate-text v)))))
+(iter-defun fing-gen-any (&rest fingers)
+  (let ((l (length fingers)))
+    (while fingers
+      (let* ((i (random l))
+             (finger (nth i fingers)))
+        (iter-yield
+         (if (stringp finger)
+             (fing-random-char finger)
+           (iter-next finger)))))))
 
-(defun fingel-remove-overlays ()
+(iter-defun fing-gen-!consecutive (&rest fingers)
+  (let* ((l (length fingers))
+         (skip (random l)))
+    (while fingers
+      (let* ((idxs (fing-steps 1 l))
+             (idx (->> (-remove-item skip idxs)
+                       (fing-random-element)))
+             (finger (nth idx fingers)))
+        (setq skip idx)
+        (iter-yield
+         (if (stringp finger)
+             (fing-random-char finger)
+           (iter-next finger)))))))
+
+(cl-defun fing-gen-words (&key word-count word-len gen)
+  (setq res nil)
+  (dotimes (i word-count)
+    (dotimes (j word-len)
+      (setq res (s-append (iter-next gen) res)))
+    (setq res (s-append "\n" res)))
+  (s-trim res))
+
+(defun fing-split-on-chars (str)
+  (->>  str
+        (s-split "")
+        (cdr)
+        (-butlast)))
+
+(defun fing-diff (a b)
+  (-map-indexed
+   (-lambda (idx (a . b)) (list idx (s-equals? a b)))
+   (-zip (fing-split-on-chars a)
+         (fing-split-on-chars b))))
+
+(defun fing-diff-to-regions (diff)
+  (-partition-by (-lambda ((_idx is-eq)) is-eq) diff))
+
+(defun fing-content (buffer)
+  (with-current-buffer buffer
+    (buffer-string)))
+
+(defun fing-remove-overlays ()
   (interactive)
   (remove-overlays))
 
-(defun fingel-draw-overlays (&rest _a _b _c)
+(defun fing-draw-overlays (&rest _a _b _c)
   (interactive)
   (remove-overlays)
-  (let* ((ex (fingel-content fingel-exercise-buffer))
-         (in (fingel-content fingel-input-buffer))
+  (let* ((ex (fing-content fing-exercise-buffer))
+         (in (fing-content fing-input-buffer))
          (ex-len (length ex))
          (in-len (length in)))
     (-each
-        (->> (fingel-diff ex in)
-             (fingel-diff-to-regions))
+        (->> (fing-diff ex in)
+             (fing-diff-to-regions))
       (-lambda (v)
         (-let (((first-idx is-correct) (-first-item v))
                ((last-idx _) (-last-item v)))
           (-> (make-overlay (+ first-idx 1) (+ last-idx 2))
-              (overlay-put 'face (if is-correct fingel-correct-face fingel-wrong-face))))))
+              (overlay-put 'face (if is-correct fing-correct-face fing-wrong-face))))))
     ;; (-> (make-overlay (+ (min ex-len in-len) 1)
     ;;                   (+ (max ex-len in-len) 1))
-    ;;     (overlay-put 'face fingel-wrong-face))
+    ;;     (overlay-put 'face fing-wrong-face))
     ))
 
-(defun fingel-draw-overlays-in-input-buffer (&rest _a _b _c)
+(defun fing-draw-overlays-in-input-buffer (&rest _a _b _c)
   (interactive)
-  (with-current-buffer fingel-input-buffer
-    (fingel-draw-overlays)))
+  (with-current-buffer fing-input-buffer
+    (fing-draw-overlays)))
 
-(defun fingel-draw-overlays-in-exercise-buffer (&rest _a _b _c)
+(defun fing-draw-overlays-in-exercise-buffer (&rest _a _b _c)
   (interactive)
-  (with-current-buffer fingel-exercise-buffer
-    (fingel-draw-overlays)))
+  (with-current-buffer fing-exercise-buffer
+    (fing-draw-overlays)))
+
+(defvar fing-nr-of-words 40)
+(defvar fing-word-length 10)
+
+(setq fing-left-4 "1!qQaAzZ")
+(setq fing-left-3 "2@wWsSxX")
+(setq fing-left-2 "3#eEdDcC")
+(setq fing-left-1 "4$rRfFvVbBgGtT5%")
+(setq fing-right-1 "6^yYhHnN7&uUjJmM")
+(setq fing-right-2 "8*iIkK,<")
+(setq fing-right-3 "9(oOlL.>")
+(setq fing-right-4 "0)pP;:/?'\"[{-_=+]}\\|`~")
+
+(setq fing-exercises
+      (list
+       :left-right-24 (fing-gen-!consecutive fing-left-2 fing-left-4 fing-right-2 fing-right-4)))
 
 (defun fingel ()
   (interactive)
-  (let* ((exercise-key (->> fingel-exercises
-                            (fingel-plist-keys)
-                            (completing-read "fingel: ")
+  (let* ((exercise-key (->> fing-exercises
+                            (fing-plist-keys)
+                            (completing-read "fing: ")
                             (read)))
-         (exercise-text (fingel-exercise-text fingel-exercises exercise-key))
-         (in-buffer (get-buffer-create fingel-input-buffer))
-         (exer-buffer (get-buffer-create fingel-exercise-buffer)))
+         (exercise-text (->> (plist-get fing-exercises exercise-key)
+                             (fing-gen-words :word-count fing-nr-of-words :word-len fing-word-length :gen)))
+         (in-buffer (get-buffer-create fing-input-buffer))
+         (exer-buffer (get-buffer-create fing-exercise-buffer)))
 
     (switch-to-buffer exer-buffer)
     (setq buffer-read-only nil)
@@ -146,6 +153,8 @@
 
     (switch-to-buffer in-buffer)
     (delete-region (point-min) (point-max))
-    (add-hook 'after-change-functions #'fingel-draw-overlays-in-input-buffer t t)
-    (add-hook 'after-change-functions #'fingel-draw-overlays-in-exercise-buffer t t)
-    (fingel-draw-overlays)))
+    (add-hook 'after-change-functions #'fing-draw-overlays-in-input-buffer t t)
+    (add-hook 'after-change-functions #'fing-draw-overlays-in-exercise-buffer t t)
+    (fing-draw-overlays)))
+
+(provide 'fing)
