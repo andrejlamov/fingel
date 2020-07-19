@@ -7,6 +7,7 @@
 (require 's)
 (require 'dash)
 (require 'cl)
+(require 'generator)
 
 (defvar fing-input-buffer "*fing-input*")
 (defvar fing-exercise-buffer "*fing-exercise*")
