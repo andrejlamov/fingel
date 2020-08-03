@@ -121,10 +121,10 @@
 (defvar fing-nr-of-words 40)
 (defvar fing-word-length 10)
 
-(setq fing-left-4 "1!qQaAzZ")
-(setq fing-left-3 "2@wWsSxX")
-(setq fing-left-2 "3#eEdDcC")
-(setq fing-left-1 "4$rRfFvVbBgGtT5%")
+(setq fing-left-4 "qaQA12!@")
+(setq fing-left-3 "wszWSZ3#")
+(setq fing-left-2 "edxEDXS$4")
+(setq fing-left-1 "rfcRFC5%")
 (setq fing-right-1 "6^yYhHnN7&uUjJmM")
 (setq fing-right-2 "8*iIkK,<")
 (setq fing-right-3 "9(oOlL.>")
@@ -132,6 +132,10 @@
 
 (setq fing-exercises
       (list
+       :right (fing-gen-!consecutive fing-right-1 fing-right-2 fing-right-3 fing-right-4)
+       :left (fing-gen-!consecutive fing-left-1 fing-left-2 fing-left-3 fing-left-4)
+       :inner (fing-gen-!consecutive (fing-gen-!consecutive fing-left-2 fing-left-3)
+                                     (fing-gen-!consecutive fing-right-2 fing-right-3))
        :left-12-right-34 (fing-gen-!consecutive (fing-gen-!consecutive fing-left-1 fing-left-2)
                                                 (fing-gen-!consecutive fing-right-3 fing-right-4))
        :left-right-34 (fing-gen-!consecutive fing-left-3 fing-left-4 fing-right-3 fing-right-4)
